@@ -12,7 +12,7 @@ sys.path.append(pyerp_dir)
 import pyerp
 
 raw = read_raw_xdf("sub-virtual_ses-S001_task-oddball_run-002_eeg.xdf")
-raw.filter(l_freq=0.1, h_freq = 30)
+#raw.filter(l_freq=1, h_freq = 40)
 
 events, event_id = mne.events_from_annotations(raw)
 print(event_id)
