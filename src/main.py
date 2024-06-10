@@ -1,13 +1,18 @@
 """Example program to demonstrate how to send a multi-channel time-series
 with proper meta-data to LSL."""
 import argparse
+import os
+import datetime
 import time
+import logging
 from random import random as rand
 
 import numpy as np
 
 import pylsl
 
+from utils import log
+from utils.std import mkdir
 
 def main(name,
          id,
@@ -15,7 +20,7 @@ def main(name,
          srate,
          channels,
          name_inlet,
-         markers,
+         target,
          erp):
     
     # fetch marker inlet
@@ -66,6 +71,7 @@ def main(name,
         assert check_info.nominal_srate() == srate
 
     print("now sending data...")
+    logger.debug("now sending data...")
     start_time = pylsl.local_clock()
     sent_samples = 0
     send_erp = False
@@ -73,10 +79,12 @@ def main(name,
         sample, timestamp = inlet.pull_sample(timeout=0.01)
         if sample is not None:
             for mrk in sample:
-                if mrk in markers['target']:
+                #if mrk in markers['target']:
+                if mrk in target:
                     idx_erp = 0
                     if (idx_erp <= length_erp) and send_erp:
                         print("erp is overlapped. second erp is ignored.")
+                        logger.debug("erp is overlapped. second erp is ignored.")
                     send_erp = True
                     mrk_erp = mrk
         elapsed_time = pylsl.local_clock() - start_time
@@ -95,6 +103,7 @@ def main(name,
                         else:
                             send_erp = False
                             print("ERP was sent for marker '%s'"%mrk_erp)
+                            logger.debug("ERP was sent for marker '%s'"%mrk_erp)
                     t_vec.append(val)
                 if send_erp:
                     idx_erp += 1
@@ -115,20 +124,41 @@ def main(name,
 
 
 if __name__ == '__main__':
-    #parser = argparse.ArgumentParser()
-    #parser.add_argument('--name', default='LSLExampleAmp',
-    #                    help="Name of the created stream.")
-    #parser.add_argument('--type', default='EEG',
-    #                    help="Type of the created stream.")
-    #parser.add_argument('--srate', default=100.0, help="Sampling rate of the created stream.", type=float)
-    #arg = parser.parse_args()
     import conf
 
-    main(name=conf.name_outlet,
-         id=conf.id_outlet,
-         stream_type=conf.type_outlet,
-         srate=conf.fs,
-         channels=conf.channels,
-         name_inlet = conf.name_inlet,
-         markers=conf.markers,
+    log_strftime = "%y-%m-%d_%H-%M-%S"
+    datestr =  datetime.datetime.now().strftime(log_strftime) 
+    log_fname = "%s.log"%datestr
+    
+    mkdir(conf.log_dir)
+    #if os.path.exists(os.path.join(conf.log_dir, log_fname)):
+    #    os.remove(os.path.join(conf.log_dir, log_fname))
+    log.set_logger(os.path.join(conf.log_dir, log_fname), True)
+
+    logger = logging.getLogger(__name__)
+    
+    logger.debug("log file will be saved in %s"%str(os.path.join(conf.log_dir, log_fname)))
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--name', default = "jarvis-erp", type = str)
+    parser.add_argument('--id', default = 'jarvis-erp', type = str)
+    parser.add_argument('--type', default = 'eeg', type = str)
+    parser.add_argument('--channels', default=['F3', 'Fz', 'F4', 'C3', 'Cz', 'C4', 'P3', 'Pz', 'P4'], type = str, nargs='*')
+    parser.add_argument('--fs', default = 1000, type = int)
+    parser.add_argument('--mrkinlet', default = "scab-c", type = str)
+    parser.add_argument('--target', default = conf.target, type = str, nargs='*')
+    
+    args = parser.parse_args()
+    
+    for key in vars(args).keys():
+        val = vars(args)[key]
+        logger.debug("%s: %s"%(str(key), str(val)))
+
+    main(name=args.name,
+         id=args.id,
+         stream_type=args.type,
+         srate=args.fs,
+         channels=args.channels,
+         name_inlet = args.mrkinlet,
+         target=args.target,
          erp=conf.erp)
