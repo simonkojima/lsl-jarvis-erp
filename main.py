@@ -142,7 +142,7 @@ if __name__ == '__main__':
     parser.add_argument('--type', default = 'eeg', type = str)
     parser.add_argument('--channels', default=['F3', 'Fz', 'F4', 'C3', 'Cz', 'C4', 'P3', 'Pz', 'P4'], type = str, nargs='*')
     parser.add_argument('--fs', default = 1000, type = int)
-    parser.add_argument('--marker-inlet', default = "scab-c", type = str)
+    parser.add_argument('--markerinlet', default = "scab-c", type = str)
     parser.add_argument('--target', default = conf.target, type = str, nargs='*')
     
     args = parser.parse_args()
@@ -156,6 +156,6 @@ if __name__ == '__main__':
          stream_type=args.type,
          srate=args.fs,
          channels=args.channels,
-         name_inlet = args.mrkinlet,
+         name_inlet = args.markerinlet,
          target=args.target,
          erp=conf.erp)
