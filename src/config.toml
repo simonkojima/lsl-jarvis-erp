@@ -1,0 +1,6 @@
+target = list()
+for val in range(101, 201):
+    target.append(str(val))
+
+erp = [0.0 for m in range(300)] + [2.0 for m in range(200)]
+

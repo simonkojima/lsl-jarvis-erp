@@ -1,5 +1,3 @@
-"""Example program to demonstrate how to send a multi-channel time-series
-with proper meta-data to LSL."""
 import argparse
 import os
 import datetime
@@ -131,8 +129,7 @@ if __name__ == '__main__':
     log_fname = "%s.log"%datestr
     
     mkdir(conf.log_dir)
-    #if os.path.exists(os.path.join(conf.log_dir, log_fname)):
-    #    os.remove(os.path.join(conf.log_dir, log_fname))
+
     log.set_logger(os.path.join(conf.log_dir, log_fname), True)
 
     logger = logging.getLogger(__name__)
@@ -145,7 +142,7 @@ if __name__ == '__main__':
     parser.add_argument('--type', default = 'eeg', type = str)
     parser.add_argument('--channels', default=['F3', 'Fz', 'F4', 'C3', 'Cz', 'C4', 'P3', 'Pz', 'P4'], type = str, nargs='*')
     parser.add_argument('--fs', default = 1000, type = int)
-    parser.add_argument('--mrkinlet', default = "scab-c", type = str)
+    parser.add_argument('--marker-inlet', default = "scab-c", type = str)
     parser.add_argument('--target', default = conf.target, type = str, nargs='*')
     
     args = parser.parse_args()
