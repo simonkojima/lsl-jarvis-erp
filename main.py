@@ -4,13 +4,24 @@ import datetime
 import time
 import logging
 from random import random as rand
+import threading
 
 import numpy as np
+import pyicom as icom
+
+import socket
+import copy
+import json
 
 import pylsl
 
 from utils import log
 from utils.std import mkdir
+
+try:
+    import tomllib
+except:
+    import toml as tomllib
 
 def main(name,
          id,
@@ -18,7 +29,7 @@ def main(name,
          srate,
          channels,
          name_inlet,
-         target,
+         target_list,
          erp):
     
     # fetch marker inlet
@@ -74,6 +85,7 @@ def main(name,
     sent_samples = 0
     send_erp = False
     while True:
+        target = target_list[0]
         sample, timestamp = inlet.pull_sample(timeout=0.01)
         if sample is not None:
             for mrk in sample:
@@ -121,20 +133,49 @@ def main(name,
         time.sleep(0.02)
 
 
-if __name__ == '__main__':
-    import conf
+def thread_icom(ip, port, target):
+    server = icom.server(ip = ip, port = port, timeout=None)
+    server.start()
+    print("server info. ip: %s, port: %s"%(str(ip), str(port)))
+    logger.debug("server info. ip: %s, port: %s"%(str(ip), str(port)))
+    server.wait_for_connection()
+    
+    while True:
+        try:
+            data = server.recv()
+            msg_json = json.loads(data.decode('utf-8'))
+            target[0] = msg_json['target']
+        except KeyboardInterrupt:
+            break
+        except socket.error as e:
+            break
+        except Exception as e:
+            print(e)
+            break
+            
 
+if __name__ == '__main__':
+    try:
+        with open("config.toml", "r") as f:
+            config = tomllib.load(f)
+    except:
+        with open("config.toml", "rb") as f:
+            config = tomllib.load(f)
+
+    home_dir = os.path.expanduser("~")
+    
     log_strftime = "%y-%m-%d_%H-%M-%S"
     datestr =  datetime.datetime.now().strftime(log_strftime) 
     log_fname = "%s.log"%datestr
-    
-    mkdir(conf.log_dir)
 
-    log.set_logger(os.path.join(conf.log_dir, log_fname), True)
+    mkdir(os.path.join(home_dir, config['directories']['log']))
+    #if os.path.exists(os.path.join(conf.log_dir, log_fname)):
+    #    os.remove(os.path.join(conf.log_dir, log_fname))
+    log.set_logger(os.path.join(home_dir, config['directories']['log'], log_fname), True)
 
     logger = logging.getLogger(__name__)
     
-    logger.debug("log file will be saved in %s"%str(os.path.join(conf.log_dir, log_fname)))
+    logger.debug("log file will be saved in %s"%str(os.path.join(home_dir, config['directories']['log'], log_fname)))
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--name', default = "jarvis-erp", type = str)
@@ -143,7 +184,9 @@ if __name__ == '__main__':
     parser.add_argument('--channels', default=['F3', 'Fz', 'F4', 'C3', 'Cz', 'C4', 'P3', 'Pz', 'P4'], type = str, nargs='*')
     parser.add_argument('--fs', default = 1000, type = int)
     parser.add_argument('--markerinlet', default = "scab-c", type = str)
-    parser.add_argument('--target', default = conf.target, type = str, nargs='*')
+    parser.add_argument('--target', default = config['target']['default'], type = str, nargs='*')
+    parser.add_argument('--port', default = 45514, type = int)
+    parser.add_argument('--ip', default = 'localhost', type = str)
     
     args = parser.parse_args()
     
@@ -151,11 +194,18 @@ if __name__ == '__main__':
         val = vars(args)[key]
         logger.debug("%s: %s"%(str(key), str(val)))
 
+    erp = [0.0 for m in range(300)] + [2.0 for m in range(200)]
+    
+    target = [copy.copy(args.target)]
+    
+    thread = threading.Thread(target=thread_icom, kwargs={"ip":args.ip, "port":args.port, "target":target})
+    thread.start()
+
     main(name=args.name,
          id=args.id,
          stream_type=args.type,
          srate=args.fs,
          channels=args.channels,
          name_inlet = args.markerinlet,
-         target=args.target,
-         erp=conf.erp)
+         target_list=target,
+         erp=erp)
