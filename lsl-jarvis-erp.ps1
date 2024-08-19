@@ -1,3 +1,3 @@
 conda activate asme
-python ./main.py
+python ./main.py --fs 500
 pause
