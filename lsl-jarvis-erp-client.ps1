@@ -1,3 +1,3 @@
-conda activate asme
+conda activate jarvis
 python ./client.py
 pause
